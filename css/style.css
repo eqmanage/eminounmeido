@@ -24,19 +24,26 @@
 
 * { box-sizing: border-box; }
 
+html {
+  /* ターゲット層(40-50代)の読みやすさを考慮し、基準フォントサイズをやや大きめに */
+  font-size: 106.25%; /* 約17px相当 */
+  /* 常にライトモードで表示し、端末のダークモード設定による自動反転を防ぐ */
+  color-scheme: light only;
+}
+
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.9;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3 {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1.6;
   margin: 0;
   color: var(--navy);
@@ -533,4 +540,15 @@ input[type="text"]:focus {
   font-style: italic;
   border-color: var(--navy-2);
   color: var(--navy-2);
+}
+
+/* ==========================================================================
+   安心材料の一言(登録不要・保存しません)
+   ========================================================================== */
+
+.trust-note {
+  margin-top: 0.9rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
 }
