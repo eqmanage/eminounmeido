@@ -748,60 +748,82 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------------- 傾向レーダーチャート ---------------- */
-  const zodiacElement = {
-    牡羊座: 'fire', 獅子座: 'fire', 射手座: 'fire',
-    牡牛座: 'earth', 乙女座: 'earth', 山羊座: 'earth',
-    双子座: 'air', 天秤座: 'air', 水瓶座: 'air',
-    蟹座: 'water', 蠍座: 'water', 魚座: 'water',
+  /* 星座ごとの8軸ベーススコア(0-100)。挑戦志向・人との関わり・新しい刺激・行動の速さ・
+     芸術性・思考性・リーダーシップ性・起業家性を、占星術的なイメージでバランス良く配分 */
+  /* 星座ごとの4つの核となるスコア(0-100)。それぞれの対極(安定志向・単独集中力・
+     感受性共感力・職人気質)は 100-値 として自動的に導出する */
+  const zodiacTraitBase = {
+    牡羊座: { challenge: 80, leadership: 75, connection: 55, logic: 45 },
+    牡牛座: { challenge: 35, leadership: 40, connection: 50, logic: 55 },
+    双子座: { challenge: 60, leadership: 50, connection: 65, logic: 70 },
+    蟹座: { challenge: 40, leadership: 45, connection: 80, logic: 35 },
+    獅子座: { challenge: 75, leadership: 85, connection: 70, logic: 45 },
+    乙女座: { challenge: 40, leadership: 45, connection: 55, logic: 80 },
+    天秤座: { challenge: 45, leadership: 55, connection: 75, logic: 60 },
+    蠍座: { challenge: 65, leadership: 60, connection: 60, logic: 65 },
+    射手座: { challenge: 80, leadership: 60, connection: 60, logic: 55 },
+    山羊座: { challenge: 55, leadership: 70, connection: 45, logic: 65 },
+    水瓶座: { challenge: 65, leadership: 55, connection: 55, logic: 80 },
+    魚座: { challenge: 40, leadership: 40, connection: 70, logic: 30 },
   };
 
   function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
   function computeTraitAxes(zodiac, feeling, occupationEntry) {
-    // 4軸、各0-100。0側/100側のラベルは renderRadar 側で対応。
-    let axis = { stability: 50, connection: 50, novelty: 50, pace: 50 };
-    // stability: 0=安定志向 / 100=挑戦志向
-    // connection: 0=単独集中 / 100=人との関わり
-    // novelty: 0=これまで通り / 100=新しい刺激
-    // pace: 0=じっくり型 / 100=スピード型
+    const base = zodiacTraitBase[zodiac];
+    let core = base ? { ...base } : { challenge: 50, leadership: 50, connection: 50, logic: 50 };
 
     const feelingAdjust = {
-      continue: { stability: +25, novelty: +15 },
-      unrewarded: { stability: +10, novelty: +5, connection: +5 },
-      repetition: { novelty: +25, pace: +10 },
-      'other-desire': { stability: +20, novelty: +20 },
-      vague: { pace: -15, stability: -5 },
+      continue: { challenge: +20 },
+      unrewarded: { leadership: +10 },
+      repetition: { challenge: +10, logic: +5 },
+      'other-desire': { challenge: +15, leadership: +5 },
+      vague: { logic: -10 },
     };
     const fa = feelingAdjust[feeling] || {};
-    Object.keys(fa).forEach((k) => { axis[k] += fa[k]; });
+    Object.keys(fa).forEach((k) => { core[k] += fa[k]; });
 
-    const element = zodiacElement[zodiac];
-    const elementAdjust = {
-      fire: { stability: +15, pace: +10 },
-      earth: { stability: -15, pace: -10 },
-      air: { novelty: +15, connection: +5 },
-      water: { connection: +15, novelty: +5 },
+    if (occupationEntry && occupationEntry.peopleFacing === true) core.connection += 15;
+    if (occupationEntry && occupationEntry.peopleFacing === false) core.connection -= 15;
+
+    Object.keys(core).forEach((k) => { core[k] = clamp(core[k], 10, 90); });
+
+    // 4つの核スコアから、対になる4項目(安定志向・単独集中力・感受性共感力・職人気質)を導出
+    return {
+      challenge: core.challenge,
+      stability: 100 - core.challenge,
+      leadership: core.leadership,
+      craft: 100 - core.leadership,
+      connection: core.connection,
+      solo: 100 - core.connection,
+      logic: core.logic,
+      empathy: 100 - core.logic,
     };
-    if (element && elementAdjust[element]) {
-      Object.keys(elementAdjust[element]).forEach((k) => { axis[k] += elementAdjust[element][k]; });
-    }
-
-    if (occupationEntry && occupationEntry.peopleFacing === true) axis.connection += 15;
-    if (occupationEntry && occupationEntry.peopleFacing === false) axis.connection -= 15;
-
-    Object.keys(axis).forEach((k) => { axis[k] = clamp(axis[k], 10, 90); });
-    return axis;
   }
 
   function renderRadarSVG(axis) {
-    const viewW = 400;
-    const viewH = 320;
+    const viewW = 440;
+    const viewH = 440;
     const centerX = viewW / 2;
-    const centerY = 150;
-    const maxR = 85;
-    // 4軸: 上(stability=挑戦), 右(connection=関わり), 下(novelty=刺激), 左(pace=スピード)
-    const order = ['stability', 'connection', 'novelty', 'pace'];
-    const angles = [-90, 0, 90, 180]; // degrees
+    const centerY = viewH / 2;
+    const maxR = 90;
+
+    // 8軸を均等配置(上から時計回り)。行動系と内面・思考系を交互に並べてバランスを取る
+    // 4つの対(挑戦⇔安定、リーダー⇔職人、関わり⇔単独、論理⇔感受性)が
+    // それぞれ真反対(180度)に来るよう配置する
+    const order = ['challenge', 'leadership', 'connection', 'logic', 'stability', 'craft', 'solo', 'empathy'];
+    const labelText = {
+      challenge: '挑戦志向',
+      leadership: 'リーダーシップ性',
+      connection: '人との関わり',
+      logic: '論理的思考力',
+      stability: '安定志向',
+      craft: '職人気質',
+      solo: '単独集中力',
+      empathy: '感受性・共感力',
+    };
+    const angleStep = 360 / order.length;
+    const angles = order.map((_, i) => -90 + i * angleStep); // -90を上端(12時)として時計回り
 
     function pointFor(value, angleDeg) {
       const r = (value / 100) * maxR;
@@ -812,7 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pts = order.map((key, i) => pointFor(axis[key], angles[i]));
     const polyPoints = pts.map((p) => p.join(',')).join(' ');
 
-    // 目盛りの四角(25/50/75/100%)
+    // 目盛りの多角形(25/50/75/100%)
     const gridLevels = [25, 50, 75, 100];
     const gridPolys = gridLevels.map((lvl) => {
       const gp = angles.map((a) => pointFor(lvl, a).join(',')).join(' ');
@@ -824,16 +846,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return `<line x1="${centerX}" y1="${centerY}" x2="${x}" y2="${y}" stroke="#D9E1EA" stroke-width="1" />`;
     }).join('');
 
-    const labels = [
-      { text: '挑戦志向', anchor: 'middle', x: centerX, y: centerY - maxR - 16 },
-      { text: '人との関わり', anchor: 'start', x: centerX + maxR + 12, y: centerY + 4 },
-      { text: '新しい刺激', anchor: 'middle', x: centerX, y: centerY + maxR + 26 },
-      { text: 'スピード型', anchor: 'end', x: centerX - maxR - 12, y: centerY + 4 },
-    ];
+    // ラベル配置: 各軸の角度方向に沿って外側に置き、水平方向の位置に応じてtext-anchorを切り替える
+    const labelGap = 20;
+    const labelHtml = order.map((key, i) => {
+      const a = angles[i];
+      const rad = (a * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const lx = centerX + (maxR + labelGap) * cos;
+      let ly = centerY + (maxR + labelGap) * sin;
 
-    const labelHtml = labels.map((l) =>
-      `<text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}" font-size="13" fill="#16233F" font-family="'Zen Old Mincho', serif">${l.text}</text>`
-    ).join('');
+      let anchor = 'middle';
+      if (cos > 0.35) anchor = 'start';
+      else if (cos < -0.35) anchor = 'end';
+
+      // 上下方向の微調整(真上・真下のラベルが図形に近づきすぎないように)
+      if (sin < -0.85) ly -= 4;
+      if (sin > 0.85) ly += 10;
+
+      return `<text x="${lx}" y="${ly}" text-anchor="${anchor}" font-size="15" fill="#16233F" font-family="'Zen Old Mincho', serif">${labelText[key]}</text>`;
+    }).join('');
 
     return `
       <svg viewBox="0 0 ${viewW} ${viewH}" class="radar-svg">
@@ -961,7 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let combo = '';
     if (etoTrait && numTrait && kyuseiName && kyuseiTrait) {
-      combo = `${eto}年の${etoTrait}、数秘術${numerology}の${numTrait}、${kyuseiName}の${kyuseiTrait}も特徴です。`;
+      combo = `また、${etoTrait}や${numTrait}、${kyuseiTrait}も併せ持っています。`;
     }
 
     const addOn = (gender === '男性' || gender === '女性') ? entry[gender] : '';
