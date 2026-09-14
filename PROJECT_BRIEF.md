@@ -249,7 +249,7 @@ SVGで動的に描画(`renderRadarSVG()`)。8方向に均等配置し、ラベ�
   js/app.js
   img/og-image.png
   ```
-- ホスティング: GitHub Pages を想定(リポジトリ例: `eminounmeido`)
+- ホスティング: GitHub Pages を想定(リポジトリ: `emonounmeido`。旧名 `eminounmeido` から改名)
 - 依存ライブラリなし(Vanilla JS)。Webフォントのみ Google Fonts から読み込み
 
 ## 7. コンテンツトーン・ガイドライン
