@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     gender: null,
     birthday: null,
     job: '',
+    jobMatchedCandidate: null, // true: 提示した候補から選んだ(想定内) / false: その他で自由入力(想定外)
     feeling: null,
     wish: '',
   };
@@ -31,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const genderButtons = document.querySelectorAll('#q-gender .choice-pill');
   const birthdayInput = document.getElementById('q-birthday');
   const toStep2Btn = document.getElementById('btn-to-step2');
+
+  // カレンダーにあらかじめ入っているデフォルト日付を、初期状態にも反映しておく
+  state.birthday = birthdayInput.value || null;
 
   function checkStep1() {
     toStep2Btn.disabled = !(state.gender && state.birthday);
@@ -101,6 +105,54 @@ document.addEventListener('DOMContentLoaded', () => {
     return null;
   }
 
+  /* デカン(星座を前期・中期・後期の3つに分割)を判定し、職業候補にさらにバリエーションを持たせる */
+  function dayOfYearRef(month, day) {
+    // うるう年の影響を避けるため、基準年(2001年)に統一して日数を計算する
+    return Math.floor((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 1)) / 86400000);
+  }
+
+  function getDecan(birthdayStr) {
+    const d = new Date(birthdayStr);
+    if (isNaN(d.getTime())) return null;
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+
+    for (const z of zodiacRanges) {
+      const [fm, fd] = z.from;
+      const [tm, td] = z.to;
+      const wraps = fm > tm; // 山羊座のように年をまたぐ場合
+
+      const inRange = wraps
+        ? ((m === fm && day >= fd) || (m === tm && day <= td))
+        : ((m === fm && day >= fd) || (m === tm && day <= td) || (m > fm && m < tm));
+
+      if (!inRange) continue;
+
+      let startDoy = dayOfYearRef(fm, fd);
+      let endDoy = dayOfYearRef(tm, td);
+      let curDoy = dayOfYearRef(m, day);
+
+      if (wraps) {
+        // 年またぎ: 12/22始まり基準で計算し直す(12/22を0とする通算日数に変換)
+        const toOffset = (doy) => (doy >= startDoy ? doy - startDoy : doy + 365 - startDoy);
+        endDoy = toOffset(endDoy);
+        curDoy = toOffset(curDoy);
+        startDoy = 0;
+      }
+
+      const totalLen = endDoy - startDoy + 1;
+      const offset = curDoy - startDoy;
+      const third = totalLen / 3;
+
+      if (offset < third) return 1;
+      if (offset < third * 2) return 2;
+      return 3;
+    }
+    return null;
+  }
+
+  const decanLabel = { 1: '前期', 2: '中期', 3: '後期' };
+
   const zodiacJobHints = {
     牡羊座: ['消防士', '営業', '自衛官'],
     牡牛座: ['飲食店勤務', '経理・事務', '美容師'],
@@ -116,19 +168,163 @@ document.addEventListener('DOMContentLoaded', () => {
     魚座: ['保育士', '看護師', '美容師'],
   };
 
-  function renderJobChoices() {
-    const zodiac = getZodiac(state.birthday);
-    const hints = zodiac ? zodiacJobHints[zodiac] : null;
+  /* デカン(前期/中期/後期)ごとに1つ、追加の職業候補を持たせてバリエーションを増やす */
+  const zodiacDecanExtra = {
+    牡羊座: ['スポーツインストラクター', '起業家', 'イベント企画'],
+    牡牛座: ['伝統工芸の職人', '農業関連', 'パティシエ'],
+    双子座: ['ライター', '通訳・翻訳', 'ラジオ関連の仕事'],
+    蟹座: ['カフェ経営', '福祉関連の仕事', '家庭教師'],
+    獅子座: ['舞台・エンタメ関連', '広報・PR', 'イベントプロデューサー'],
+    乙女座: ['品質管理の専門職', '編集者', '栄養士'],
+    天秤座: ['インテリアコーディネーター', 'ギャラリー運営', '渉外・広報関連'],
+    蠍座: ['リサーチャー(調査・分析)', '心理関連の仕事', '醸造・発酵関連'],
+    射手座: ['旅行・観光関連', '海外関連の仕事', 'スポーツ関連'],
+    山羊座: ['不動産関連', '経営企画', '建築関連の職人'],
+    水瓶座: ['NPO運営', 'IT系の新規事業', 'サイエンス関連'],
+    魚座: ['アート関連の仕事', 'セラピスト', '写真・映像関連'],
+  };
 
-    if (zodiac && hints) {
-      jobLabelEl.textContent = `${zodiac}生まれのあなたに浮かぶ仕事は、近いものがありますか？`;
-      document.getElementById('q-job-hint').textContent = '星座の傾向から見た候補です。近いものがあれば選んでください';
-    } else {
-      jobLabelEl.textContent = '今のお仕事は何ですか？';
-      document.getElementById('q-job-hint').textContent = '職種や業種を、思いつくままで大丈夫です';
+  /* ---------------- 職業の予想エンジン(星座・干支・数秘術・九星気学の複合占い) ---------------- */
+
+  const etoOrder = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  function getEto(year) {
+    const idx = ((year - 4) % 12 + 12) % 12;
+    return etoOrder[idx];
+  }
+
+  const etoJobHints = {
+    子: ['営業', '販売・接客'],
+    丑: ['経理・事務', '公務員'],
+    寅: ['消防士', '自衛官'],
+    卯: ['保育士', '美容師'],
+    辰: ['エンジニア', '営業'],
+    巳: ['警察官', 'エンジニア'],
+    午: ['ドライバー', '営業'],
+    未: ['保育士', '看護師'],
+    申: ['販売・接客', '美容師'],
+    酉: ['経理・事務', '公務員'],
+    戌: ['警察官', '自衛官'],
+    亥: ['消防士', '飲食店勤務'],
+  };
+
+  function digitSumReduce(numStr) {
+    let n = numStr.split('').reduce((a, c) => a + Number(c), 0);
+    while (n > 9) n = String(n).split('').reduce((a, c) => a + Number(c), 0);
+    return n;
+  }
+
+  function getNumerology(birthdayStr) {
+    const digits = birthdayStr.replace(/[^0-9]/g, '');
+    const n = digitSumReduce(digits);
+    return n === 0 ? 9 : n;
+  }
+
+  const numerologyJobHints = {
+    1: ['営業', '公務員'],
+    2: ['看護師', '保育士'],
+    3: ['販売・接客', '美容師'],
+    4: ['経理・事務', 'エンジニア'],
+    5: ['ドライバー', '営業'],
+    6: ['保育士', '看護師'],
+    7: ['エンジニア', '警察官'],
+    8: ['消防士', '自衛官'],
+    9: ['教師', '主婦・主夫'],
+  };
+
+  const kyuseiNames = ['一白水星', '二黒土星', '三碧木星', '四緑木星', '五黄土星', '六白金星', '七赤金星', '八白土星', '九紫火星'];
+  const kyuseiJobHints = {
+    1: ['販売・接客', '営業'],
+    2: ['主婦・主夫', '保育士'],
+    3: ['営業', 'ドライバー'],
+    4: ['教師', '経理・事務'],
+    5: ['自衛官', '消防士'],
+    6: ['公務員', 'エンジニア'],
+    7: ['販売・接客', '美容師'],
+    8: ['警察官', '経理・事務'],
+    9: ['教師', '看護師'],
+  };
+
+  function getKyuseiNumber(birthdayStr) {
+    const d = new Date(birthdayStr);
+    if (isNaN(d.getTime())) return null;
+    let y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    // 節分(2/3〜2/4)より前に生まれた場合は前年の九星気学の年として扱う(簡易的に2/4を境目とする)
+    if (m === 1 || (m === 2 && day < 4)) y -= 1;
+    const s = digitSumReduce(String(y));
+    let starNum = y < 2000 ? 11 - s : 2 - s;
+    while (starNum <= 0) starNum += 9;
+    while (starNum > 9) starNum -= 9;
+    return starNum;
+  }
+
+  function getAgeBracket(birthdayStr) {
+    const d = new Date(birthdayStr);
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const monthDiff = now.getMonth() - d.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d.getDate())) age -= 1;
+    if (age < 30) return '20代以下';
+    if (age < 40) return '30代';
+    if (age < 50) return '40代';
+    return '50代以上';
+  }
+
+  /* 年代・性別のゆるやかな傾向による補正(統計データの引用ではなく、あくまで占いの一要素) */
+  function getStatsHint(ageBracket, gender) {
+    const table = {
+      '20代以下_男性': ['営業', 'ドライバー'],
+      '20代以下_女性': ['販売・接客', '保育士'],
+      '30代_男性': ['営業', 'エンジニア'],
+      '30代_女性': ['販売・接客', '保育士'],
+      '40代_男性': ['営業', 'エンジニア'],
+      '40代_女性': ['経理・事務', '販売・接客'],
+      '50代以上_男性': ['公務員', 'エンジニア'],
+      '50代以上_女性': ['主婦・主夫', '看護師'],
+    };
+    return table[`${ageBracket}_${gender}`] || [];
+  }
+
+  function computeJobScores(zodiac, birthdayStr, gender) {
+    if (!zodiac || !birthdayStr) return [];
+    const year = new Date(birthdayStr).getFullYear();
+    const eto = getEto(year);
+    const numerology = getNumerology(birthdayStr);
+    const kyuseiNum = getKyuseiNumber(birthdayStr);
+    const ageBracket = getAgeBracket(birthdayStr);
+    const statsHint = getStatsHint(ageBracket, gender);
+
+    const scores = {};
+    function addVotes(list, weights) {
+      (list || []).forEach((job, i) => {
+        scores[job] = (scores[job] || 0) + (weights[i] !== undefined ? weights[i] : 1);
+      });
     }
 
-    const options = hints ? [...hints, 'その他(自分で入力する)'] : ['その他(自分で入力する)'];
+    addVotes(zodiacJobHints[zodiac], [3, 2, 1]);
+    addVotes(etoJobHints[eto], [2, 1]);
+    addVotes(numerologyJobHints[numerology], [2, 1]);
+    addVotes(kyuseiJobHints[kyuseiNum], [2, 1]);
+    addVotes(statsHint, [1, 1]);
+
+    return Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  }
+
+  function getTopJobCandidates(zodiac, birthdayStr, gender, topN) {
+    return computeJobScores(zodiac, birthdayStr, gender).slice(0, topN).map((entry) => entry[0]);
+  }
+
+  function renderJobChoices() {
+    const zodiac = getZodiac(state.birthday);
+    const candidates = getTopJobCandidates(zodiac, state.birthday, state.gender, 3);
+
+    jobLabelEl.textContent = '今のお仕事を教えてください';
+    document.getElementById('q-job-hint').textContent = '近いものがあれば選んでください';
+
+    let options = [...candidates];
+    options.push('その他(自分で入力する)');
+    if (options.length === 1) options = ['その他(自分で入力する)'];
 
     jobChoicesContainer.innerHTML = options.map((label) => `
       <button type="button" class="choice-card" data-value="${label}">${label}</button>
@@ -148,9 +344,11 @@ document.addEventListener('DOMContentLoaded', () => {
           jobOtherInput.style.display = '';
           jobOtherInput.focus();
           state.job = jobOtherInput.value.trim();
+          state.jobMatchedCandidate = false;
         } else {
           jobOtherInput.style.display = 'none';
           state.job = btn.dataset.value;
+          state.jobMatchedCandidate = true;
         }
         checkStep2();
       });
@@ -159,6 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   jobOtherInput.addEventListener('input', () => {
     state.job = jobOtherInput.value;
+    state.jobMatchedCandidate = false;
     checkStep2();
   });
 
@@ -212,8 +411,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const feelingHint = feelingWishHints[state.feeling];
 
     if (zodiac) {
-      wishLabelEl.textContent = 'ここまでの回答をもとに、こんな仕事が浮かびますが、気になるものはありますか？';
-      document.getElementById('q-wish-hint').textContent = `${zodiac}生まれと、ここまでの回答から見えてきた候補です。近いものがなければ「その他」へ`;
+      wishLabelEl.textContent = 'ちょっとやってみたい仕事は、ありますか？';
+      document.getElementById('q-wish-hint').textContent = '気になるものがあれば選んでください。近いものがなければ「その他」へ';
     } else {
       wishLabelEl.textContent = 'ちょっとやってみたい仕事は、ありますか？';
       document.getElementById('q-wish-hint').textContent = '思いつかなければ、気になる分野やキーワードだけでも構いません';
@@ -270,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '生け花の先生', reason: '一瞬の判断と、美しい所作を積み重ねてきた修練が、花を通した表現に自然と重なります。', episode: '現場で「型を体に染み込ませるまで繰り返す」姿勢を培ってきたことは、稽古を通じて感覚を磨いていく生け花の世界でも、そのまま強みになります。' },
         { job: '防災・危機管理の講師', reason: '現場で培った冷静な判断力を、企業や地域に伝える形で活かせます。', episode: 'とっさの判断を求められる現場に立ち続けてきた経験は、伝える立場になったときに、机上の知識にはない説得力になります。' },
       ],
+      uniqueSuggestion: { job: '落語家', reason: '緊迫した現場で身につけた間合いと度胸は、人前で場を持たせる話芸にも意外なほど通じます。', episode: '一瞬の判断と、張り詰めた空気を和らげてきた経験は、高座で観客の呼吸を読む感覚とどこかで重なります。' },
     },
     {
       keywords: ['警察官', '警察', '刑事', '交番'],
@@ -279,6 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '営業職', reason: '人の表情や言葉の裏にある本音を読み取る力は、信頼関係が要となる営業でそのまま活きます。', episode: '初対面の相手の些細な変化に気づいてきた観察眼は、商談の場でも「今、何を求めているか」を読み取る力として活きます。' },
         { job: '人材コーディネーター', reason: '人を見極め、適切な場所につなぐという役割は、日々の仕事の延長線上にあります。', episode: '人を見極め、適切な場所に導いてきた経験は、転職支援の現場でもそのまま応用できます。' },
       ],
+      uniqueSuggestion: { job: '推理小説家・脚本家', reason: '現場で見てきた人間模様の機微を、物語として描く力に転用できます。', episode: '事件の裏にある人の心の動きを見つめてきた経験は、フィクションの中に説得力を宿すための、何よりの土台になります。' },
     },
     {
       keywords: ['看護師', 'ナース', '看護'],
@@ -288,6 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: 'キャリアカウンセラー', reason: '相手の状態を見立て、必要な支えを差し出す力は、仕事の悩みに寄り添う場面でも活きます。', episode: '患者さんの状態を見立て、必要な言葉をかけてきた経験は、キャリアに悩む人の話を聞く場面でも活きます。' },
         { job: '産業保健スタッフ', reason: '医療の知識と、人に寄り添う姿勢を、企業で働く人たちのために使う道があります。', episode: '医療の知識だけでなく、忙しい人に無理なく寄り添ってきた経験が、働く人の健康管理という仕事に直結します。' },
       ],
+      uniqueSuggestion: { job: '遺品整理士', reason: '人生の最期に寄り添ってきた経験は、遺されたご家族の気持ちに寄り添う仕事でも活きます。', episode: '命と向き合う現場で培った静かな眼差しは、故人の暮らしの痕跡と丁寧に向き合う仕事において、かけがえのない力になります。' },
     },
     {
       keywords: ['教師', '教員', '学校の先生'],
@@ -297,6 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '企業研修講師', reason: '教えることのプロとしての経験は、大人向けの研修にもそのまま応用できます。', episode: '同じ内容でも相手のレベルに合わせて説明を変えてきた経験は、社会人研修の現場でそのまま武器になります。' },
         { job: 'ライター', reason: '伝わる言葉を選ぶ力は、文章という形に置き換えても発揮できます。', episode: '難しいことをかみ砕いて伝えてきた積み重ねは、文章という形に変えても十分に通用します。' },
       ],
+      uniqueSuggestion: { job: 'キャンプ場運営・野外教育インストラクター', reason: '教える経験を、教室の外、自然の中の学びの場に置き換える道もあります。', episode: '相手のレベルに合わせて伝え方を変えてきた力は、天候も反応も読めない自然の中でこそ、真価を発揮します。' },
     },
     {
       keywords: ['経理', '会計', '総務', '事務'],
@@ -306,6 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: 'ファイナンシャルプランナー', reason: '数字と誠実に向き合ってきた姿勢は、個人のお金の相談に乗る仕事でも信頼につながります。', episode: '数字のズレを見逃さず、こつこつ確認してきた姿勢は、お金の相談に乗る仕事で大きな信頼につながります。' },
         { job: '士業事務所のアシスタント', reason: '正確さと粘り強さが求められる仕事との相性が良い傾向にあります。', episode: '正確な処理を積み重ねてきた実績は、専門家のそばで仕事をする際に、そのまま評価されるポイントになります。' },
       ],
+      uniqueSuggestion: { job: '骨董品・古物の鑑定士', reason: '数字の細部を見逃さない目は、物の真贋を見極める仕事にも通じます。', episode: '小さな不整合も見逃さず確認し続けてきた姿勢は、真贋を分ける微細な違いを見抜く仕事において、そのまま武器になります。' },
     },
     {
       keywords: ['営業'],
@@ -315,6 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '独立系の営業代行・コンサルタント', reason: 'これまで培った関係構築力を、特定の会社ではなく自分の看板で活かす道があります。', episode: '特定の商品を売る力ではなく、人との関係を築く力そのものを、自分の看板で使う道があります。' },
         { job: 'カスタマーサクセス', reason: '売ることだけでなく、相手を成功に導く力として応用できます。', episode: '契約を取るまでで終わらせず、その後の関係を大切にしてきた姿勢は、顧客の成功を支える仕事にそのまま向いています。' },
       ],
+      uniqueSuggestion: { job: '司会業・MC', reason: '人前で場を盛り上げ、相手の反応を見ながら話を組み立てる力は、司会業でも活きます。', episode: '商談の場の空気を読み、間合いを取ってきた経験は、大勢の前で場を回す仕事にも意外なほどなじみます。' },
     },
     {
       keywords: ['販売', '接客', '店員', 'ショップ'],
@@ -324,6 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '接客・接遇の講師業', reason: '現場で培った感覚は、言葉にして人に教えるという形でも価値を持ちます。', episode: 'お客様の顔色を見て、対応を変えてきた感覚は、言葉にして人に伝えることでさらに価値を持ちます。' },
         { job: 'カスタマーサクセス', reason: 'お客様に寄り添ってきた経験が、契約後の関係づくりに活かせます。', episode: '目の前の一人に向き合ってきた経験は、契約後も長く関わる仕事において強みになります。' },
       ],
+      uniqueSuggestion: { job: '旅館の女将・宿の看板役', reason: 'お客様一人ひとりに合わせたおもてなしの感覚を、宿という舞台で発揮する道があります。', episode: '目の前の人の様子を読み、対応を変えてきた感覚は、一晩の滞在に心を尽くすもてなしの仕事と、静かに重なります。' },
     },
     {
       keywords: ['エンジニア', 'SE', 'プログラマ', 'システム', 'IT'],
@@ -333,6 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '小さな事業の立ち上げ', reason: '仕組みを設計する力は、自分の事業を組み立てる際の土台になります。', episode: '複雑な要件を整理し、動くものに落とし込んできた経験は、自分の事業を一から組み立てる際の土台になります。' },
         { job: '技術顧問・アドバイザー', reason: '積み上げてきた専門知識を、現場を離れた形で伝える道もあります。', episode: '現場で培った知識は、実際に手を動かさなくても、助言という形で十分な価値を持ちます。' },
       ],
+      uniqueSuggestion: { job: '謎解きゲーム・体験型イベントの制作者', reason: '論理的な仕組みを組み立てる力を、遊びの設計に転用する道もあります。', episode: '複雑な仕様を一つずつ組み上げてきた力は、人を楽しませる仕掛けを設計する仕事でも、そのまま活きます。' },
     },
     {
       keywords: ['公務員', '市役所', '区役所', '行政', '役場'],
@@ -342,6 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: 'NPO・地域団体の運営', reason: '公共のために動いてきた経験は、地域の課題解決の現場でそのまま活きます。', episode: '立場の異なる人たちの意見を聞き、間を取り持ってきた経験は、地域活動の現場でそのまま活きます。' },
         { job: '地域コーディネーター', reason: '行政と住民の間に立ってきた経験が、橋渡し役として力を発揮します。', episode: '制度と現場の両方を知っているからこそ、住民と行政の橋渡し役として重宝されます。' },
       ],
+      uniqueSuggestion: { job: '古民家再生・空き家活用プロデューサー', reason: '制度と現場をつなぐ調整力を、地域資源の再生に活かす道もあります。', episode: '立場の異なる人たちの間に立ってきた経験は、古い建物と新しい使い手をつなぐ仕事でも、静かに力を発揮します。' },
     },
     {
       keywords: ['飲食', '調理', 'ホール', '料理人', 'シェフ', 'コック'],
@@ -351,6 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '食育インストラクター', reason: '食への知識と経験を、次の世代に伝える形に翻訳できます。', episode: '毎日の調理で培った知識は、伝える相手を変えるだけで、新しい価値になります。' },
         { job: '小さな宿・ゲストハウスの運営', reason: 'おもてなしの感覚と現場力を、宿泊という形で発揮する道があります。', episode: '限られた時間で複数のことを回してきた現場力は、宿泊業の忙しい時間帯でもそのまま活きます。' },
       ],
+      uniqueSuggestion: { job: '移動販売車(キッチンカー)のオーナー', reason: '限られた環境で回してきた現場力を、自分の看板で発揮する道があります。', episode: '狭い厨房で複数のことを同時にこなしてきた経験は、小さな車の中で店を営む仕事にも、そのまま活きます。' },
     },
     {
       keywords: ['自衛官', '自衛隊'],
@@ -360,6 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '危機管理コンサルタント', reason: '有事を想定して備える視点は、企業のリスク管理にそのまま応用できます。', episode: '最悪の事態を想定して備えてきた視点は、企業のリスク管理においてそのまま貴重な視点になります。' },
         { job: 'アウトドア・野外活動インストラクター', reason: '体力と統率力を、自然の中での指導という形で活かせます。', episode: '体力とチームをまとめる力は、自然の中での指導という場でも発揮できます。' },
       ],
+      uniqueSuggestion: { job: '秘境ガイド・探検家', reason: '過酷な環境に適応する力を、未知の場所を案内する仕事に転用できます。', episode: '厳しい環境でチームを機能させてきた経験は、予測できない自然の中で人を導く仕事とも、深いところでつながっています。' },
     },
     {
       keywords: ['保育士', '幼稚園', '保育'],
@@ -369,6 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '企業内保育・子育て支援の企画', reason: '現場で培った視点を、より大きな仕組みづくりに活かす道があります。', episode: '現場の子どもたちを見てきた視点は、より大きな仕組みを作る立場になったときに活きます。' },
         { job: '絵本作家・児童向けコンテンツ制作', reason: '子どもの心の動きを見てきた経験が、表現の土台になります。', episode: '子どもの反応を間近で見てきた経験は、表現を作る上での確かな判断材料になります。' },
       ],
+      uniqueSuggestion: { job: '玩具デザイナー・おもちゃ作家', reason: '子どもの反応を見てきた経験を、ものづくりに活かす道があります。', episode: '小さな変化に気づき続けてきた観察眼は、子どもが夢中になる仕掛けを形にする仕事に、そのまま息づきます。' },
     },
     {
       keywords: ['主婦', '主夫', '専業', '子育て'],
@@ -378,6 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: 'ライフオーガナイザー', reason: '家庭というシステムを回してきた工夫は、他の家庭にとっても価値ある知恵になります。', episode: '家庭という複雑なシステムを回してきた工夫の数々は、他の家庭にとって具体的なヒントになります。' },
         { job: '地域コミュニティの運営', reason: '人と人をつなぎ、日々の暮らしを支えてきた力がそのまま活きます。', episode: '日々のやり取りの中で築いてきた人とのつながりは、地域活動の場でそのまま力になります。' },
       ],
+      uniqueSuggestion: { job: '民泊・シェアハウスの運営', reason: '家庭を切り盛りしてきた力を、他人同士が集う場の運営に活かす道があります。', episode: '見えない仕事を同時に回し続けてきたマネジメント力は、様々な人が出入りする場を整える仕事にも、静かに活きます。' },
     },
     {
       keywords: ['ドライバー', '運送', '配送', 'トラック', 'タクシー'],
@@ -387,6 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: '地方移住・二拠点生活のコーディネーター', reason: '土地勘と、人と接してきた経験を、暮らしの提案という形で活かせます。', episode: '各地を回って培った土地勘は、暮らしの提案をする際の説得力になります。' },
         { job: '物流まわりのコンサルタント', reason: '現場を知っているからこそ見える改善点を、仕組みづくりに活かせます。', episode: '現場を知っているからこそ気づける改善点は、仕組みを作る立場になったときに強みになります。' },
       ],
+      uniqueSuggestion: { job: 'ラジオパーソナリティ', reason: '一人で長時間過ごす中で培った、間の取り方や語り口を活かす道もあります。', episode: '運転中に一人で言葉を紡いできた時間は、リスナーの隣に座るような語り口を持つ仕事と、意外なほど近いところにあります。' },
     },
     {
       keywords: ['美容師', '理容師', '美容室', 'ヘアサロン'],
@@ -396,6 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { job: 'パーソナルスタイリスト', reason: '人をよく見て似合うものを見立てる力は、他の分野でも応用できます。', episode: 'お客様に似合うものを見立ててきた感覚は、他のジャンルに置き換えても十分に通用します。' },
         { job: 'セラピスト', reason: '施術中の会話で人の悩みに触れてきた経験が、傾聴を軸にした仕事につながります。', episode: '施術中の会話で悩みに触れてきた経験は、聞くことを中心にした仕事にそのままつながります。' },
       ],
+      uniqueSuggestion: { job: '舞台・映像の特殊メイクアーティスト', reason: '人の見た目を変える技術を、映画や舞台の世界で発揮する道があります。', episode: 'お客様の魅力を引き出す技術は、物語の中の人物を作り上げる仕事でも、そのまま強みになります。' },
     },
   ];
 
@@ -406,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { job: '今の分野に近い専門アドバイザー', reason: '長く関わってきたからこそ見える視点は、教える・助言する立場になったときに強みになります。', episode: '同じ現場に長くいたからこそ気づける改善点は、助言する立場になったときに初めて価値を発揮します。' },
       { job: '複業・小さな挑戦から始める道', reason: 'いきなり職業を変えるのではなく、まず小さく試してみることで、次の力が見えてくることがあります。', episode: '大きく舵を切る前に、まず小さく試してみることで、これまで気づかなかった自分の力が見えてくることがあります。' },
     ],
+    uniqueSuggestion: { job: '地域おこし協力隊', reason: '長く一つの場所や役割に尽くしてきた経験を、まったく新しい土地のために使う道もあります。', episode: '一つの持ち場を支え続けてきた継続力は、縁もゆかりもない土地に根を張り、信頼を積み直す仕事でも、静かな強みになります。' },
   };
 
   const feelingSupport = {
@@ -555,7 +770,130 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
+  /* ---------------- 星座占い(性別はここでのみ使用、職業提案には使わない) ---------------- */
+  const zodiacFortune = {
+    牡羊座: {
+      base: '直感で動き、思い立ったらすぐに試してみたくなるタイプ。少々せっかちなところはありますが、その行動力が結果的に道を切り拓きます。',
+      男性: '特にリーダー役を任されると、持ち前の勢いが一層発揮されます。',
+      女性: '自分の意志をはっきり持っているぶん、頼れる存在として周囲から見られることが多いタイプです。',
+    },
+    牡牛座: {
+      base: '変化よりも積み重ねを好み、じっくりと物事に向き合う安定感のあるタイプ。一度心を決めたら、簡単には揺らぎません。',
+      男性: '地に足のついた判断力が、周囲からの厚い信頼につながります。',
+      女性: '穏やかな佇まいの奥に、芯の強さを秘めているタイプです。',
+    },
+    双子座: {
+      base: '好奇心が旺盛で、複数のことに同時に興味を持つタイプ。情報のアンテナが広く、話題が豊富です。',
+      男性: '場の空気を読みながら、軽やかに立ち回る器用さを持っています。',
+      女性: '話し上手なぶん、聞き役に回ったときの気配りにも定評があるタイプです。',
+    },
+    蟹座: {
+      base: '身近な人との関係を大切にする、情に厚いタイプ。過去の思い出や積み重ねを大事にする傾向があります。',
+      男性: '家族や仲間を守ろうとする責任感が、人一倍強く表れます。',
+      女性: '包み込むような優しさで、周囲から頼られることが多いタイプです。',
+    },
+    獅子座: {
+      base: '存在感があり、自然と人の中心になりやすいタイプ。誇りを持って物事に取り組みます。',
+      男性: '堂々とした振る舞いが、周囲を惹きつける最大の魅力になっています。',
+      女性: '華やかさの中に、面倒見の良さを併せ持つタイプです。',
+    },
+    乙女座: {
+      base: '細やかな気配りができ、物事を丁寧に仕上げるタイプ。完璧を求めるあまり、自分に厳しくなりがちな一面もあります。',
+      男性: '誠実さと几帳面さが、周囲からの高い評価に直結します。',
+      女性: '気配り上手な反面、頑張りすぎてしまうこともあるタイプです。',
+    },
+    天秤座: {
+      base: 'バランス感覚に優れ、周囲との調和を大切にするタイプ。美しいものやスマートなものを好みます。',
+      男性: '公平な立場を保とうとする姿勢が、揺るぎない信頼を生みます。',
+      女性: '上品な物腰の中に、しっかりとした判断軸を持つタイプです。',
+    },
+    蠍座: {
+      base: '物事を深く掘り下げる集中力を持つタイプ。一度決めた目標や関係は、簡単に手放しません。',
+      男性: '寡黙に見えても、内側には熱い情熱を秘めています。',
+      女性: '静かな佇まいの奥に、強い意志を秘めているタイプです。',
+    },
+    射手座: {
+      base: '自由を愛し、新しい世界に飛び込むことを恐れないタイプ。楽観的で、失敗をも糧に変えていきます。',
+      男性: '束縛を嫌い、自分のペースを何より大切にします。',
+      女性: '好奇心の赴くままに行動する、フットワークの軽さが魅力のタイプです。',
+    },
+    山羊座: {
+      base: '着実に、地道に物事を積み上げていくタイプ。責任感が強く、周囲から頼られる存在になりやすい傾向があります。',
+      男性: '目標に向かって粘り強く努力する姿勢が、確かな評価につながります。',
+      女性: 'しっかり者に見られがちですが、内側では努力家な一面を持つタイプです。',
+    },
+    水瓶座: {
+      base: '独自の視点を持ち、常識にとらわれない発想をするタイプ。人とは違う道を選ぶことに抵抗がありません。',
+      男性: '自由な発想力で、周囲から一目置かれる存在になります。',
+      女性: 'マイペースに見えて、実は先を見通す洞察力を持っているタイプです。',
+    },
+    魚座: {
+      base: '感受性が豊かで、人の気持ちに寄り添うことが得意なタイプ。想像力に富み、芸術的な感性を持っています。',
+      男性: '優しさの中に、繊細な芸術的センスを併せ持っています。',
+      女性: '共感力の高さから、周囲の相談役になることが多いタイプです。',
+    },
+  };
+
+  /* 干支・数秘術・九星気学それぞれの「気質」の一言(職業ヒントとは別に、性格描写として保持) */
+  const etoTraits = {
+    子: '機転の利く社交性',
+    丑: '誠実な粘り強さ',
+    寅: '大胆なリーダー気質',
+    卯: '温和な協調性',
+    辰: '大きな発想力',
+    巳: '深い洞察力',
+    午: '情熱的な行動力',
+    未: '調和を重んじる思いやり',
+    申: 'そつない器用さ',
+    酉: '几帳面さ',
+    戌: '義理堅い正義感',
+    亥: 'まっすぐな情熱',
+  };
+
+  const numerologyTraits = {
+    1: '自立心',
+    2: '調和を大切にする協調性',
+    3: '豊かな表現力',
+    4: '堅実さ',
+    5: '自由な行動力',
+    6: '面倒見の良さ',
+    7: '探求心',
+    8: '実行力',
+    9: '博愛精神',
+  };
+
+  const kyuseiTraits = {
+    1: '柔軟な適応力',
+    2: '縁の下の献身性',
+    3: '若々しい行動力',
+    4: '調和を重んじる信用力',
+    5: '強い意志',
+    6: '誇り高いリーダー気質',
+    7: '華やかな社交性',
+    8: '変化に強い粘り強さ',
+    9: '知的な情熱',
+  };
+
+  function getFortuneText(zodiac, gender, eto, numerology, kyuseiNum) {
+    const entry = zodiacFortune[zodiac];
+    if (!entry) return null;
+
+    const etoTrait = etoTraits[eto];
+    const numTrait = numerologyTraits[numerology];
+    const kyuseiName = kyuseiNames[kyuseiNum - 1];
+    const kyuseiTrait = kyuseiTraits[kyuseiNum];
+
+    let combo = '';
+    if (etoTrait && numTrait && kyuseiName && kyuseiTrait) {
+      combo = `${eto}年の${etoTrait}、数秘術${numerology}の${numTrait}、${kyuseiName}の${kyuseiTrait}も特徴です。`;
+    }
+
+    const addOn = (gender === '男性' || gender === '女性') ? entry[gender] : '';
+    return entry.base + combo + (addOn ? addOn : '');
+  }
+
   function runDiagnosis() {
+
     const loadingEl = document.getElementById('result-loading');
     const contentEl = document.getElementById('result-content');
     contentEl.classList.remove('is-visible');
@@ -590,6 +928,20 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('result-title').textContent = 'あなたの経験は、こう翻訳できます';
       document.getElementById('result-body').innerHTML = paragraphs.map((p) => `<p>${p}</p>`).join('');
 
+      // 星座占い(性別はここでのみ反映。職業提案のロジックには使用しない)
+      const eto = getEto(new Date(state.birthday).getFullYear());
+      const numerology = getNumerology(state.birthday);
+      const kyuseiNum = getKyuseiNumber(state.birthday);
+      const fortuneText = getFortuneText(zodiac, state.gender, eto, numerology, kyuseiNum);
+      if (fortuneText) {
+        document.getElementById('result-body').innerHTML += `
+          <div class="fortune-block">
+            <p class="fortune-heading">生まれ持った気質</p>
+            <p class="fortune-text">${fortuneText}</p>
+          </div>
+        `;
+      }
+
       // 傾向レーダーチャート
       const axis = computeTraitAxes(zodiac, state.feeling, match);
       document.getElementById('result-body').innerHTML += `
@@ -602,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // マッチ度つきの提案カード
       const seed = `${job}|${state.feeling}|${zodiac}|${wish}`;
       const scores = matchScores(seed);
-      const suggestionHtml = translation.suggestions.map((s, i) => `
+      let suggestionHtml = translation.suggestions.map((s, i) => `
         <div class="suggestion-card">
           <div class="suggestion-head">
             <span class="suggestion-job">${s.job}</span>
@@ -612,6 +964,22 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="suggestion-episode">${s.episode}</span>
         </div>
       `).join('');
+
+      // 提示した候補通りの職業を選んだ人には、もう一歩踏み込んだ意外性のある提案を追加する
+      if (state.jobMatchedCandidate === true && translation.uniqueSuggestion) {
+        const u = translation.uniqueSuggestion;
+        suggestionHtml += `
+          <div class="suggestion-card suggestion-card-wildcard">
+            <div class="suggestion-head">
+              <span class="suggestion-job">${u.job}</span>
+              <span class="suggestion-score suggestion-score-wildcard">意外性のある提案</span>
+            </div>
+            <span class="suggestion-reason">${u.reason}</span>
+            <span class="suggestion-episode">${u.episode}</span>
+          </div>
+        `;
+      }
+
       document.getElementById('result-body').innerHTML += `<div class="suggestion-list">${suggestionHtml}</div>`;
 
       if (!match) {
@@ -635,14 +1003,15 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------- リスタート ---------------- */
   document.getElementById('btn-restart').addEventListener('click', () => {
     state.gender = null;
-    state.birthday = null;
+    state.birthday = '1980-04-02';
     state.job = '';
+    state.jobMatchedCandidate = null;
     state.feeling = null;
     state.wish = '';
 
     genderButtons.forEach((b) => b.classList.remove('is-selected'));
     feelingButtons.forEach((b) => b.classList.remove('is-selected'));
-    birthdayInput.value = '';
+    birthdayInput.value = '1980-04-02';
     jobChoicesContainer.querySelectorAll('.choice-card').forEach((b) => b.classList.remove('is-selected'));
     jobOtherInput.style.display = 'none';
     jobOtherInput.value = '';
