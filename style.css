@@ -1,0 +1,455 @@
+/* ==========================================================================
+   エミの運命道(仮) — 40代の可能性診断サイト
+   デザインコンセプト: 積み重ねた年輪を、次の道へ翻訳する
+   白と青を基調に、占い感・転職サイト感を出さない
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;500;600;700;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+
+:root {
+  --navy:    #16233F;
+  --navy-2:  #2B3F63;
+  --sky:     #EFF4F9;
+  --sky-2:   #DCE6F0;
+  --paper:   #FCFBF8;
+  --ink:     #23262E;
+  --muted:   #6E7787;
+  --line:    #D9E1EA;
+
+  --font-display: 'Zen Old Mincho', serif;
+  --font-body: 'Noto Sans JP', sans-serif;
+
+  --max-width: 720px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 300;
+  line-height: 1.9;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--navy);
+}
+
+p { margin: 0 0 1em; }
+button { font-family: inherit; }
+
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ==========================================================================
+   ミニヘッダー(仮の屋号のみ、控えめに)
+   ========================================================================== */
+
+.mini-header {
+  padding: 1.4rem 1.5rem;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+/* ==========================================================================
+   年輪モチーフ(装飾SVG)
+   ========================================================================== */
+
+.rings {
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto 2.2rem;
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   画面(スクリーン)切り替え
+   ========================================================================== */
+
+.screen {
+  display: none;
+  min-height: calc(100vh - 64px);
+  align-items: center;
+}
+.screen.is-active { display: flex; }
+
+.screen-inner {
+  width: 100%;
+  padding: 2.5rem 0 4rem;
+}
+
+/* ==========================================================================
+   ランディング
+   ========================================================================== */
+
+.landing {
+  text-align: center;
+}
+
+.landing h1 {
+  font-size: clamp(1.7rem, 5vw, 2.3rem);
+  margin-bottom: 0.7em;
+}
+
+.landing .lede {
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 3vw, 1.3rem);
+  color: var(--navy-2);
+  margin-bottom: 2.4em;
+}
+
+/* ==========================================================================
+   ボタン
+   ========================================================================== */
+
+.btn-primary {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 1.1rem 2.6rem;
+  background: var(--navy);
+  color: var(--paper);
+  border: none;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.25s ease, transform 0.15s ease;
+}
+.btn-primary:hover { background: var(--navy-2); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary .btn-label {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.btn-primary .btn-sub {
+  font-size: 0.78rem;
+  color: #C9D3E2;
+  font-weight: 300;
+}
+
+.btn-primary:disabled {
+  background: var(--sky-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.btn-primary:disabled .btn-sub { color: var(--muted); }
+
+.btn-secondary {
+  display: inline-block;
+  margin-top: 1.2rem;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ==========================================================================
+   進捗インジケーター
+   ========================================================================== */
+
+.progress {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2.6rem;
+}
+.progress-dot {
+  width: 34px;
+  height: 2px;
+  background: var(--sky-2);
+}
+.progress-dot.is-done { background: var(--navy-2); }
+.progress-dot.is-current { background: var(--navy); }
+
+/* ==========================================================================
+   質問フォーム
+   ========================================================================== */
+
+.step-title {
+  font-size: clamp(1.4rem, 4vw, 1.8rem);
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.question-block {
+  margin-bottom: 2.4rem;
+}
+
+.question-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--navy);
+  margin-bottom: 0.9rem;
+}
+
+.question-hint {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: -0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+/* 選択肢: 性別など少数の横並び選択 */
+.choice-row {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.choice-pill {
+  padding: 0.75rem 1.4rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.choice-pill:hover { border-color: var(--navy-2); }
+.choice-pill.is-selected {
+  border-color: var(--navy);
+  background: var(--sky);
+  color: var(--navy);
+  font-weight: 500;
+}
+
+/* 選択肢: 縦積みの選択(Q4のような気持ちの選択) */
+.choice-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.choice-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.choice-card:hover { border-color: var(--navy-2); }
+.choice-card.is-selected {
+  border-color: var(--navy);
+  background: var(--sky);
+  font-weight: 500;
+}
+
+input[type="date"],
+input[type="text"] {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+input[type="date"]:focus,
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--navy-2);
+}
+
+.step-actions {
+  text-align: center;
+  margin-top: 2.6rem;
+}
+
+/* ==========================================================================
+   結果画面
+   ========================================================================== */
+
+.result-loading {
+  text-align: center;
+  padding: 4rem 0;
+}
+.result-loading p {
+  font-family: var(--font-display);
+  color: var(--navy-2);
+}
+
+.result-content { display: none; }
+.result-content.is-visible { display: block; }
+
+.result-tag {
+  display: block;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+
+.result-title {
+  text-align: center;
+  font-size: clamp(1.5rem, 4.5vw, 2rem);
+  margin-bottom: 1.6rem;
+  color: var(--navy);
+}
+
+.result-body {
+  border-top: 1px solid var(--line);
+  padding-top: 1.8rem;
+}
+
+.result-body p { color: var(--ink); }
+
+.result-footer {
+  margin-top: 2.6rem;
+  padding-top: 1.8rem;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.small-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* ==========================================================================
+   結果: 職業の翻訳提案カード
+   ========================================================================== */
+
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin: 1.4rem 0 1.8rem;
+}
+
+.suggestion-card {
+  border: 1px solid var(--line);
+  background: var(--sky);
+  padding: 1.1rem 1.3rem;
+}
+
+.suggestion-job {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  color: var(--navy);
+  margin-bottom: 0.35rem;
+}
+
+.suggestion-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+.suggestion-head .suggestion-job { margin-bottom: 0; }
+
+.suggestion-score {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--navy-2);
+  border: 1px solid var(--navy-2);
+  padding: 0.15em 0.6em;
+  white-space: nowrap;
+}
+
+.suggestion-reason {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.suggestion-episode {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.8;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--line);
+}
+
+/* ==========================================================================
+   結果: 傾向レーダーチャート
+   ========================================================================== */
+
+.radar-block {
+  margin: 1.8rem 0;
+  text-align: center;
+  border-top: 1px solid var(--line);
+  padding-top: 1.8rem;
+}
+
+.radar-title {
+  font-family: var(--font-display);
+  color: var(--navy);
+  margin-bottom: 0.6rem;
+}
+
+.radar-svg {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+}
+
+/* ==========================================================================
+   結果: シェアボタン
+   ========================================================================== */
+
+.share-block {
+  margin-top: 2rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.share-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.9rem;
+}
+
+.share-row {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-block;
+  padding: 0.7rem 1.4rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--line);
+  color: var(--navy);
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.share-btn:hover { border-color: var(--navy-2); background: var(--sky); }
+.share-x { border-color: var(--navy); }
+.share-line { border-color: #06C755; color: #06C755; }
+.share-line:hover { background: rgba(6,199,85,0.08); }

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>エミの運命道(仮) | あなたの経験を翻訳する、可能性診断</title>
+<meta name="description" content="このまま20年働きますか？あなたの経験を翻訳する、3分の可能性診断。">
+
+<!-- OGP: 実際に公開するドメインに合わせて og:url と og:image を書き換えてください -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="このまま20年、働きますか？｜エミの運命道">
+<meta property="og:description" content="あなたの経験を翻訳する、3分の可能性診断。">
+<meta property="og:url" content="https://eqmanage.github.io/eminounmeido/">
+<meta property="og:image" content="https://eqmanage.github.io/eminounmeido/img/og-image.png">
+<meta property="og:site_name" content="エミの運命道">
+<meta property="og:locale" content="ja_JP">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="このまま20年、働きますか？｜エミの運命道">
+<meta name="twitter:description" content="あなたの経験を翻訳する、3分の可能性診断。">
+<meta name="twitter:image" content="https://eqmanage.github.io/eminounmeido/img/og-image.png">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="mini-header">エミの運命道<span style="opacity:.6;">(仮)</span></div>
+
+<main class="container">
+
+  <!-- ============ ランディング ============ -->
+  <section class="screen is-active" id="screen-landing">
+    <div class="screen-inner landing">
+
+      <svg class="rings" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="20" fill="none" stroke="#16233F" stroke-width="1.4"/>
+        <circle cx="100" cy="100" r="40" fill="none" stroke="#2B3F63" stroke-width="1.1" opacity="0.8"/>
+        <circle cx="100" cy="100" r="62" fill="none" stroke="#2B3F63" stroke-width="1" opacity="0.6"/>
+        <circle cx="100" cy="100" r="86" fill="none" stroke="#8FA3BE" stroke-width="0.9" opacity="0.5"/>
+        <circle cx="100" cy="100" r="94" fill="none" stroke="#DCE6F0" stroke-width="6" opacity="0.7"/>
+      </svg>
+
+      <h1>このまま20年、<br>働きますか？</h1>
+      <p class="lede">あなたの経験を、翻訳します。</p>
+
+      <button class="btn-primary" id="btn-start">
+        <span class="btn-label">自分の可能性を診断する</span>
+        <span class="btn-sub">所要時間3分・無料</span>
+      </button>
+
+    </div>
+  </section>
+
+  <!-- ============ STEP 1 ============ -->
+  <section class="screen" id="screen-step1">
+    <div class="screen-inner">
+      <div class="progress">
+        <span class="progress-dot is-current" data-dot="1"></span>
+        <span class="progress-dot" data-dot="2"></span>
+        <span class="progress-dot" data-dot="3"></span>
+      </div>
+      <h2 class="step-title">あなたのことを教えて</h2>
+
+      <div class="question-block">
+        <label class="question-label">性別</label>
+        <div class="choice-row" id="q-gender">
+          <button type="button" class="choice-pill" data-value="女性">女性</button>
+          <button type="button" class="choice-pill" data-value="男性">男性</button>
+          <button type="button" class="choice-pill" data-value="回答しない">回答しない</button>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <label class="question-label" for="q-birthday">誕生日</label>
+        <input type="date" id="q-birthday">
+      </div>
+
+      <div class="step-actions">
+        <button class="btn-primary" id="btn-to-step2" disabled>
+          <span class="btn-label">次へ</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 2 ============ -->
+  <section class="screen" id="screen-step2">
+    <div class="screen-inner">
+      <div class="progress">
+        <span class="progress-dot is-done" data-dot="1"></span>
+        <span class="progress-dot is-current" data-dot="2"></span>
+        <span class="progress-dot" data-dot="3"></span>
+      </div>
+      <h2 class="step-title">今のことを、少しだけ</h2>
+
+      <div class="question-block">
+        <label class="question-label" id="q-job-label">今のお仕事は何ですか？</label>
+        <span class="question-hint" id="q-job-hint">職種や業種を、思いつくままで大丈夫です</span>
+        <div class="choice-stack" id="q-job-choices"></div>
+        <input type="text" id="q-job-other" class="q-job-other" placeholder="お仕事を入力してください" style="display:none; margin-top:0.7rem;">
+      </div>
+
+      <div class="question-block">
+        <label class="question-label">最近、仕事をしていてこんな気持ちになることはありますか？</label>
+        <div class="choice-stack" id="q-feeling">
+          <button type="button" class="choice-card" data-value="continue">この仕事をこの先20年続けるのは、正直しんどいかもしれない</button>
+          <button type="button" class="choice-card" data-value="unrewarded">頑張ってきたはずなのに、報われている実感があまりない</button>
+          <button type="button" class="choice-card" data-value="repetition">毎日同じことの繰り返しで、代わり映えがない気がする</button>
+          <button type="button" class="choice-card" data-value="other-desire">本当はやりたいことが、他にある気がしている</button>
+          <button type="button" class="choice-card" data-value="vague">特に不満というわけではないが、なんとなく違う気がしている</button>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn-primary" id="btn-to-step3" disabled>
+          <span class="btn-label">次へ</span>
+        </button>
+        <div><button class="btn-secondary" id="btn-back-1">戻る</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 3 ============ -->
+  <section class="screen" id="screen-step3">
+    <div class="screen-inner">
+      <div class="progress">
+        <span class="progress-dot is-done" data-dot="1"></span>
+        <span class="progress-dot is-done" data-dot="2"></span>
+        <span class="progress-dot is-current" data-dot="3"></span>
+      </div>
+      <h2 class="step-title">最後にひとつだけ</h2>
+
+      <div class="question-block">
+        <label class="question-label" id="q-wish-label">ちょっとやってみたい仕事は、ありますか？</label>
+        <span class="question-hint" id="q-wish-hint">思いつかなければ、気になる分野やキーワードだけでも構いません</span>
+        <div class="choice-stack" id="q-wish-choices"></div>
+        <input type="text" id="q-wish-other" class="q-job-other" placeholder="気になる仕事やキーワードを入力してください" style="display:none; margin-top:0.7rem;">
+      </div>
+
+      <div class="step-actions">
+        <button class="btn-primary" id="btn-diagnose">
+          <span class="btn-label">診断結果を見る</span>
+        </button>
+        <div><button class="btn-secondary" id="btn-back-2">戻る</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 結果 ============ -->
+  <section class="screen" id="screen-result">
+    <div class="screen-inner">
+
+      <div class="result-loading" id="result-loading">
+        <svg class="rings" viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r="20" fill="none" stroke="#16233F" stroke-width="1.4"/>
+          <circle cx="100" cy="100" r="40" fill="none" stroke="#2B3F63" stroke-width="1.1" opacity="0.8"/>
+          <circle cx="100" cy="100" r="62" fill="none" stroke="#2B3F63" stroke-width="1" opacity="0.6"/>
+          <circle cx="100" cy="100" r="86" fill="none" stroke="#8FA3BE" stroke-width="0.9" opacity="0.5"/>
+        </svg>
+        <p>あなたの経験を、翻訳しています…</p>
+      </div>
+
+      <div class="result-content" id="result-content">
+        <span class="result-tag" id="result-tag"></span>
+        <h2 class="result-title" id="result-title"></h2>
+        <div class="result-body" id="result-body"></div>
+
+        <div class="share-block">
+          <p class="share-label">結果をシェアする</p>
+          <div class="share-row">
+            <a href="#" target="_blank" rel="noopener" class="share-btn share-x" id="share-x">Xでシェア</a>
+            <a href="#" target="_blank" rel="noopener" class="share-btn share-line" id="share-line">LINEで送る</a>
+          </div>
+        </div>
+
+        <div class="result-footer">
+          <button class="btn-secondary" id="btn-restart">もう一度診断する</button>
+        </div>
+      </div>
+
+      <p class="small-note">この診断はエンターテインメントを目的とした参考情報です。実際のキャリア選択は、ご自身の状況を踏まえてご判断ください。</p>
+
+    </div>
+  </section>
+
+</main>
+
+<script src="js/app.js"></script>
+</body>
+</html>
