@@ -317,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderJobChoices() {
     const zodiac = getZodiac(state.birthday);
-    const candidates = getTopJobCandidates(zodiac, state.birthday, state.gender, 3);
+    const candidates = getTopJobCandidates(zodiac, state.birthday, state.gender, 5);
 
     jobLabelEl.textContent = '今のお仕事を教えてください';
     document.getElementById('q-job-hint').textContent = '近いものがあれば選んでください';
