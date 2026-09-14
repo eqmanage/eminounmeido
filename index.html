@@ -72,7 +72,7 @@
 
       <div class="question-block">
         <label class="question-label" for="q-birthday">誕生日</label>
-        <input type="date" id="q-birthday">
+        <input type="date" id="q-birthday" value="1980-04-02" min="1940-01-01" max="2010-12-31">
       </div>
 
       <div class="step-actions">
@@ -94,13 +94,13 @@
       <h2 class="step-title">今のことを、少しだけ</h2>
 
       <div class="question-block">
-        <label class="question-label" id="q-job-label">今のお仕事は何ですか？</label>
-        <span class="question-hint" id="q-job-hint">職種や業種を、思いつくままで大丈夫です</span>
+        <label class="question-label" id="q-job-label">今のお仕事を教えてください</label>
+        <span class="question-hint" id="q-job-hint">近いものがあれば選んでください</span>
         <div class="choice-stack" id="q-job-choices"></div>
         <input type="text" id="q-job-other" class="q-job-other" placeholder="お仕事を入力してください" style="display:none; margin-top:0.7rem;">
       </div>
 
-      <div class="question-block">
+      <div class="question-block" id="feeling-block">
         <label class="question-label">最近、仕事をしていてこんな気持ちになることはありますか？</label>
         <div class="choice-stack" id="q-feeling">
           <button type="button" class="choice-card" data-value="continue">この仕事をこの先20年続けるのは、正直しんどいかもしれない</button>
