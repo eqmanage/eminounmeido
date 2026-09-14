@@ -794,9 +794,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderRadarSVG(axis) {
-    const size = 280;
-    const center = size / 2;
-    const maxR = 95;
+    const viewW = 400;
+    const viewH = 320;
+    const centerX = viewW / 2;
+    const centerY = 150;
+    const maxR = 85;
     // 4軸: 上(stability=挑戦), 右(connection=関わり), 下(novelty=刺激), 左(pace=スピード)
     const order = ['stability', 'connection', 'novelty', 'pace'];
     const angles = [-90, 0, 90, 180]; // degrees
@@ -804,7 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function pointFor(value, angleDeg) {
       const r = (value / 100) * maxR;
       const rad = (angleDeg * Math.PI) / 180;
-      return [center + r * Math.cos(rad), center + r * Math.sin(rad)];
+      return [centerX + r * Math.cos(rad), centerY + r * Math.sin(rad)];
     }
 
     const pts = order.map((key, i) => pointFor(axis[key], angles[i]));
@@ -819,28 +821,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const axisLines = angles.map((a) => {
       const [x, y] = pointFor(100, a);
-      return `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}" stroke="#D9E1EA" stroke-width="1" />`;
+      return `<line x1="${centerX}" y1="${centerY}" x2="${x}" y2="${y}" stroke="#D9E1EA" stroke-width="1" />`;
     }).join('');
 
     const labels = [
-      { text: '挑戦志向', anchor: 'middle', x: center, y: center - maxR - 14 },
-      { text: '人との関わり', anchor: 'start', x: center + maxR + 10, y: center + 4 },
-      { text: '新しい刺激', anchor: 'middle', x: center, y: center + maxR + 22 },
-      { text: 'スピード型', anchor: 'end', x: center - maxR - 10, y: center + 4 },
-    ];
-    const labelsOpposite = [
-      { text: '安定志向', anchor: 'middle', x: center, y: center + maxR + 40 },
-      { text: '単独集中', anchor: 'end', x: center - maxR - 10, y: center + 20 },
-      { text: 'これまで通り', anchor: 'middle', x: center, y: center - maxR - 32 },
-      { text: 'じっくり型', anchor: 'start', x: center + maxR + 10, y: center + 20 },
+      { text: '挑戦志向', anchor: 'middle', x: centerX, y: centerY - maxR - 16 },
+      { text: '人との関わり', anchor: 'start', x: centerX + maxR + 12, y: centerY + 4 },
+      { text: '新しい刺激', anchor: 'middle', x: centerX, y: centerY + maxR + 26 },
+      { text: 'スピード型', anchor: 'end', x: centerX - maxR - 12, y: centerY + 4 },
     ];
 
     const labelHtml = labels.map((l) =>
-      `<text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}" font-size="12" fill="#16233F" font-family="'Zen Old Mincho', serif">${l.text}</text>`
+      `<text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}" font-size="13" fill="#16233F" font-family="'Zen Old Mincho', serif">${l.text}</text>`
     ).join('');
 
     return `
-      <svg viewBox="0 0 ${size} ${size + 30}" class="radar-svg">
+      <svg viewBox="0 0 ${viewW} ${viewH}" class="radar-svg">
         ${gridPolys}
         ${axisLines}
         <polygon points="${polyPoints}" fill="rgba(22,35,63,0.16)" stroke="#16233F" stroke-width="1.6" />
