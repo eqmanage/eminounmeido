@@ -101,6 +101,54 @@ document.addEventListener('DOMContentLoaded', () => {
     return null;
   }
 
+  /* デカン(星座を前期・中期・後期の3つに分割)を判定し、職業候補にさらにバリエーションを持たせる */
+  function dayOfYearRef(month, day) {
+    // うるう年の影響を避けるため、基準年(2001年)に統一して日数を計算する
+    return Math.floor((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 1)) / 86400000);
+  }
+
+  function getDecan(birthdayStr) {
+    const d = new Date(birthdayStr);
+    if (isNaN(d.getTime())) return null;
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+
+    for (const z of zodiacRanges) {
+      const [fm, fd] = z.from;
+      const [tm, td] = z.to;
+      const wraps = fm > tm; // 山羊座のように年をまたぐ場合
+
+      const inRange = wraps
+        ? ((m === fm && day >= fd) || (m === tm && day <= td))
+        : ((m === fm && day >= fd) || (m === tm && day <= td) || (m > fm && m < tm));
+
+      if (!inRange) continue;
+
+      let startDoy = dayOfYearRef(fm, fd);
+      let endDoy = dayOfYearRef(tm, td);
+      let curDoy = dayOfYearRef(m, day);
+
+      if (wraps) {
+        // 年またぎ: 12/22始まり基準で計算し直す(12/22を0とする通算日数に変換)
+        const toOffset = (doy) => (doy >= startDoy ? doy - startDoy : doy + 365 - startDoy);
+        endDoy = toOffset(endDoy);
+        curDoy = toOffset(curDoy);
+        startDoy = 0;
+      }
+
+      const totalLen = endDoy - startDoy + 1;
+      const offset = curDoy - startDoy;
+      const third = totalLen / 3;
+
+      if (offset < third) return 1;
+      if (offset < third * 2) return 2;
+      return 3;
+    }
+    return null;
+  }
+
+  const decanLabel = { 1: '前期', 2: '中期', 3: '後期' };
+
   const zodiacJobHints = {
     牡羊座: ['消防士', '営業', '自衛官'],
     牡牛座: ['飲食店勤務', '経理・事務', '美容師'],
@@ -116,19 +164,41 @@ document.addEventListener('DOMContentLoaded', () => {
     魚座: ['保育士', '看護師', '美容師'],
   };
 
+  /* デカン(前期/中期/後期)ごとに1つ、追加の職業候補を持たせてバリエーションを増やす */
+  const zodiacDecanExtra = {
+    牡羊座: ['スポーツインストラクター', '起業家', 'イベント企画'],
+    牡牛座: ['伝統工芸の職人', '農業関連', 'パティシエ'],
+    双子座: ['ライター', '通訳・翻訳', 'ラジオ関連の仕事'],
+    蟹座: ['カフェ経営', '福祉関連の仕事', '家庭教師'],
+    獅子座: ['舞台・エンタメ関連', '広報・PR', 'イベントプロデューサー'],
+    乙女座: ['品質管理の専門職', '編集者', '栄養士'],
+    天秤座: ['インテリアコーディネーター', 'ギャラリー運営', '渉外・広報関連'],
+    蠍座: ['リサーチャー(調査・分析)', '心理関連の仕事', '醸造・発酵関連'],
+    射手座: ['旅行・観光関連', '海外関連の仕事', 'スポーツ関連'],
+    山羊座: ['不動産関連', '経営企画', '建築関連の職人'],
+    水瓶座: ['NPO運営', 'IT系の新規事業', 'サイエンス関連'],
+    魚座: ['アート関連の仕事', 'セラピスト', '写真・映像関連'],
+  };
+
   function renderJobChoices() {
     const zodiac = getZodiac(state.birthday);
+    const decan = getDecan(state.birthday);
     const hints = zodiac ? zodiacJobHints[zodiac] : null;
+    const decanExtra = (zodiac && decan) ? zodiacDecanExtra[zodiac][decan - 1] : null;
 
     if (zodiac && hints) {
-      jobLabelEl.textContent = `${zodiac}生まれのあなたに浮かぶ仕事は、近いものがありますか？`;
-      document.getElementById('q-job-hint').textContent = '星座の傾向から見た候補です。近いものがあれば選んでください';
+      const decanText = decan ? `(${decanLabel[decan]})` : '';
+      jobLabelEl.textContent = `${zodiac}${decanText}生まれのあなたに浮かぶ仕事は、近いものがありますか？`;
+      document.getElementById('q-job-hint').textContent = '誕生日から見た傾向の候補です。近いものがあれば選んでください';
     } else {
       jobLabelEl.textContent = '今のお仕事は何ですか？';
       document.getElementById('q-job-hint').textContent = '職種や業種を、思いつくままで大丈夫です';
     }
 
-    const options = hints ? [...hints, 'その他(自分で入力する)'] : ['その他(自分で入力する)'];
+    let options = hints ? [...hints] : [];
+    if (decanExtra && !options.includes(decanExtra)) options.push(decanExtra);
+    options.push('その他(自分で入力する)');
+    if (options.length === 1) options = ['その他(自分で入力する)'];
 
     jobChoicesContainer.innerHTML = options.map((label) => `
       <button type="button" class="choice-card" data-value="${label}">${label}</button>
@@ -555,7 +625,79 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
+  /* ---------------- 星座占い(性別はここでのみ使用、職業提案には使わない) ---------------- */
+  const zodiacFortune = {
+    牡羊座: {
+      base: '直感で動き、思い立ったらすぐに試してみたくなるタイプ。少々せっかちなところはありますが、その行動力が結果的に道を切り拓きます。',
+      男性: '特にリーダー役を任されると、持ち前の勢いが一層発揮される傾向があります。',
+      女性: '自分の意志をはっきり持っているぶん、頼れる存在として周囲から見られることが多いタイプです。',
+    },
+    牡牛座: {
+      base: '変化よりも積み重ねを好み、じっくりと物事に向き合う安定感のあるタイプ。一度心を決めたら、簡単には揺らぎません。',
+      男性: '地に足のついた判断力が、周囲からの信頼につながりやすい傾向があります。',
+      女性: '穏やかな佇まいの奥に、芯の強さを秘めているタイプです。',
+    },
+    双子座: {
+      base: '好奇心が旺盛で、複数のことに同時に興味を持つタイプ。情報のアンテナが広く、話題が豊富です。',
+      男性: '場の空気を読みながら、軽やかに立ち回る器用さを持っています。',
+      女性: '話し上手なぶん、聞き役に回ったときの気配りにも定評があるタイプです。',
+    },
+    蟹座: {
+      base: '身近な人との関係を大切にする、情に厚いタイプ。過去の思い出や積み重ねを大事にする傾向があります。',
+      男性: '家族や仲間を守ろうとする責任感が、強く出やすい傾向があります。',
+      女性: '包み込むような優しさで、周囲から頼られることが多いタイプです。',
+    },
+    獅子座: {
+      base: '存在感があり、自然と人の中心になりやすいタイプ。誇りを持って物事に取り組みます。',
+      男性: '堂々とした振る舞いが、周囲を惹きつける魅力になっている傾向があります。',
+      女性: '華やかさの中に、面倒見の良さを併せ持つタイプです。',
+    },
+    乙女座: {
+      base: '細やかな気配りができ、物事を丁寧に仕上げるタイプ。完璧を求めるあまり、自分に厳しくなりがちな一面もあります。',
+      男性: '誠実さと几帳面さが、周囲からの評価につながりやすい傾向があります。',
+      女性: '気配り上手な反面、頑張りすぎてしまうこともあるタイプです。',
+    },
+    天秤座: {
+      base: 'バランス感覚に優れ、周囲との調和を大切にするタイプ。美しいものやスマートなものを好みます。',
+      男性: '公平な立場を保とうとする姿勢が、信頼につながりやすい傾向があります。',
+      女性: '上品な物腰の中に、しっかりとした判断軸を持つタイプです。',
+    },
+    蠍座: {
+      base: '物事を深く掘り下げる集中力を持つタイプ。一度決めた目標や関係は、簡単に手放しません。',
+      男性: '寡黙に見えても、内側に熱い情熱を秘めている傾向があります。',
+      女性: '静かな佇まいの奥に、強い意志を秘めているタイプです。',
+    },
+    射手座: {
+      base: '自由を愛し、新しい世界に飛び込むことを恐れないタイプ。楽観的で、失敗をも糧に変えていきます。',
+      男性: '束縛を嫌い、自分のペースを大切にする傾向が強く出やすいです。',
+      女性: '好奇心の赴くままに行動する、フットワークの軽さが魅力のタイプです。',
+    },
+    山羊座: {
+      base: '着実に、地道に物事を積み上げていくタイプ。責任感が強く、周囲から頼られる存在になりやすい傾向があります。',
+      男性: '目標に向かって粘り強く努力する姿勢が、評価につながりやすい傾向があります。',
+      女性: 'しっかり者に見られがちですが、内側では努力家な一面を持つタイプです。',
+    },
+    水瓶座: {
+      base: '独自の視点を持ち、常識にとらわれない発想をするタイプ。人とは違う道を選ぶことに抵抗がありません。',
+      男性: '自由な発想力が、周囲からユニークな存在として見られやすい傾向があります。',
+      女性: 'マイペースに見えて、実は先を見通す洞察力を持っているタイプです。',
+    },
+    魚座: {
+      base: '感受性が豊かで、人の気持ちに寄り添うことが得意なタイプ。想像力に富み、芸術的な感性を持っています。',
+      男性: '優しさの中に、繊細な芸術的センスを併せ持つ傾向があります。',
+      女性: '共感力の高さから、周囲の相談役になることが多いタイプです。',
+    },
+  };
+
+  function getFortuneText(zodiac, gender) {
+    const entry = zodiacFortune[zodiac];
+    if (!entry) return null;
+    const addOn = (gender === '男性' || gender === '女性') ? entry[gender] : '';
+    return entry.base + (addOn ? `${addOn}` : '');
+  }
+
   function runDiagnosis() {
+
     const loadingEl = document.getElementById('result-loading');
     const contentEl = document.getElementById('result-content');
     contentEl.classList.remove('is-visible');
@@ -589,6 +731,18 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('result-tag').textContent = '可能性診断・結果';
       document.getElementById('result-title').textContent = 'あなたの経験は、こう翻訳できます';
       document.getElementById('result-body').innerHTML = paragraphs.map((p) => `<p>${p}</p>`).join('');
+
+      // 星座占い(性別はここでのみ反映。職業提案のロジックには使用しない)
+      const fortuneText = getFortuneText(zodiac, state.gender);
+      if (fortuneText) {
+        document.getElementById('result-body').innerHTML += `
+          <div class="fortune-block">
+            <span class="fortune-tag-label">${zodiac}占い</span>
+            <p class="fortune-heading">生まれ持った気質</p>
+            <p class="fortune-text">${fortuneText}</p>
+          </div>
+        `;
+      }
 
       // 傾向レーダーチャート
       const axis = computeTraitAxes(zodiac, state.feeling, match);
