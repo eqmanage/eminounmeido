@@ -417,6 +417,40 @@ input[type="text"]:focus {
 }
 
 /* ==========================================================================
+   結果: 星座占い(生まれ持った気質)
+   ========================================================================== */
+
+.fortune-block {
+  margin: 1.8rem 0;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid var(--line);
+  background: var(--sky);
+}
+
+.fortune-tag-label {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--navy-2);
+  border: 1px solid var(--navy-2);
+  padding: 0.1em 0.6em;
+  margin-bottom: 0.6rem;
+}
+
+.fortune-heading {
+  font-family: var(--font-display);
+  color: var(--navy);
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+}
+
+.fortune-text {
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.85;
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
    結果: シェアボタン
    ========================================================================== */
 
@@ -453,3 +487,50 @@ input[type="text"]:focus {
 .share-x { border-color: var(--navy); }
 .share-line { border-color: #06C755; color: #06C755; }
 .share-line:hover { background: rgba(6,199,85,0.08); }
+
+/* ==========================================================================
+   職業の予想カード(STEP2)
+   ========================================================================== */
+
+.guess-card {
+  border: 1px solid var(--navy);
+  background: var(--sky);
+  padding: 1.6rem 1.4rem;
+  text-align: center;
+}
+
+.guess-tag {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.8rem;
+}
+
+.guess-job {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--navy);
+  margin: 0 0 0.5rem;
+}
+
+.guess-confidence {
+  font-size: 0.85rem;
+  color: var(--navy-2);
+  margin: 0;
+}
+
+/* ==========================================================================
+   結果: 意外性のある提案(想定内の職業選択をした人向け)
+   ========================================================================== */
+
+.suggestion-card-wildcard {
+  border-style: dashed;
+  border-color: var(--navy-2);
+  background: var(--paper);
+}
+
+.suggestion-score-wildcard {
+  font-style: italic;
+  border-color: var(--navy-2);
+  color: var(--navy-2);
+}
