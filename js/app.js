@@ -736,7 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return null;
   }
 
-  function calcExperienceYears(birthdayStr) {
+  function calcActualAge(birthdayStr) {
     if (!birthdayStr) return null;
     const birth = new Date(birthdayStr);
     if (isNaN(birth.getTime())) return null;
@@ -744,8 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let age = now.getFullYear() - birth.getFullYear();
     const monthDiff = now.getMonth() - birth.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
-    const years = age - 22;
-    return years > 0 ? years : null;
+    return age > 0 ? age : null;
   }
 
   /* ---------------- マッチ度(擬似スコア、入力から決定的に算出) ---------------- */
@@ -1054,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       const job = state.job.trim();
       const wish = state.wish.trim();
-      const years = calcExperienceYears(state.birthday);
+      const age = calcActualAge(state.birthday);
       const zodiac = getZodiac(state.birthday);
 
       const match = findOccupationMatch(job);
@@ -1062,8 +1061,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const paragraphs = [];
 
-      if (years) {
-        paragraphs.push(`これまでに、およそ${years}年分の経験を積み重ねてこられたはずです。`);
+      if (age) {
+        paragraphs.push(`${age}年の人生の中で、数えきれないほどの経験を積み重ねてこられたはずです。`);
       }
 
       paragraphs.push(
