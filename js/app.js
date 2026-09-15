@@ -1140,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const shareJob = selectedSuggestions[0].job;
-      const shareText = `私の経験は「${shareJob}」に翻訳されました。｜えもの運命道`;
+      const shareText = `私の経験は「${shareJob}」に翻訳されました。｜えもの運命堂`;
       const shareUrl = window.location.href.split('#')[0];
 
       document.getElementById('share-x').href =
